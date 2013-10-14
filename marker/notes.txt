@@ -1,0 +1,127 @@
+Create Log Folder
+
+$ mkdir /web/site.com/logs
+$ cd /web/site.com/logs
+
+
+Create Symbolic Links to logs
+
+$ ln -s /actual/logs/site.com/http/access.log access.log
+$ ln -s /actual/logs/site.com/http/error.log error.log
+$ ln -s /web/site.com/php_error.log php_error.log
+$ ln -s /web/site.com/modsec_audit.log modsec_audit.log
+$ ln -s /web/site.com/modsec_debug.log modsec_debug.log
+
+
+Make fifo pipe
+
+mkfifo pipe
+
+
+Scrolling the logs
+
+$ cd /web/site.com/logs
+
+$ tail -s .5 -n 120 -f access.log php_error.log error.log modsec_audit.log >pipe &
+
+
+Display the colorized scrolling output
+
+to current tty
+$marker <pipe
+
+
+to any tty
+$marker < pipe  >/dev/pts/2 &
+
+
+Save all colored output
+
+# marker -A <pipe | tee -a super.log
+
+Kill the Scrolling
+
+$pkill -9 marker | tail
+
+Shell Script Notes
+Script 1
+
+tail -f access.log >pipe & marker <pipe | tee -a super.log >/dev/pts/2
+tail -f access.log >pipe & marker <pipe | tee -a super.log >/dev/pts/2 &
+ 
+exec 3<> pipe; while marker >/dev/pts/2 <&3; do tail -f access.log >pipe; done; exec 3>&-
+exec 3<> pipe; marker <&3 >/dev/pts/2 & ; tail -f access.log >pipe; exec 3>&-
+exec 3<> pipe; marker <&3 >/dev/pts/2 & ; tail -f access.log >pipe
+exec 3<> pipe; marker <&3 >/dev/pts/2 & tail -f access.log >pipe
+marker <&3 >/dev/pts/2 &
+marker 0<&3 |tee -a super.log > /dev/pts/2 &
+marker <&3 |tee -a super.log > /dev/pts/2 &
+marker <pipe |tee -a /dev/pts/2 & tail -s .5 -n 120 -f php_error.log error.log modsec_audit.log >pipe &
+marker | tee -a /dev/pts/2 <pipe
+ 
+marker < tee -a /dev/pts/2 pipe >/dev/pts/2
+marker <|tee -a /dev/pts/2 pipe >/dev/pts/2
+marker <tee -a /dev/pts/2 <pipe
+marker <pipe >> tee -a super.log >/dev/pts/2
+cat <pipe | marker
+marker <pipe >>/dev/pts/2 &
+ 
+tail -fq access.log | marker  &>/dev/pts/1
+tail -qf access.log |marker &>/dev/pts/1 &
+tail -f access.log | marker > $SSH_TTY
+ 
+( marker > /dev/pts/2 )<pipe
+( marker > /dev/pts/2 )<pipe
+( marker > /dev/pts/2 )<pipe & tail -f access.log | pipe
+( marker > /dev/pts/2 )<pipe & tail -f access.log | ./pipe
+ 
+marker <pipe > /dev/pts/2 & tail -f access.log >pipe
+marker  <pipe> /dev/pts/2 & tail -f access.log >pipe
+marker  < pipe > /dev/pts/2 & tail -f access.log >pipe
+marker < pipe >/dev/pts/2 & tail -f access.log >pipe
+marker < pipe >/dev/pts/2 & tail -f access.log >pipe &
+marker < pipe >/dev/pts/2 & tail -n 40 -s 2 -f error.log modsec_audit.log php_error.log  >pipe &
+marker < pipe >| tee -a super.log | >/dev/pts/2 & tail -n 80 -s 1 -f error.log modsec_audit.log php_error.log  >pipe &
+marker < pipe >/dev/pts/2 & tail -n 100 -s 1 -f error.log modsec_audit.log php_error.log >pipe &
+marker < pipe >/dev/pts/2 & tail -n 100 -s 1 -f error.log modsec_audit.log php_error.log >pipe &
+ 
+tail -f access.log | marker > pipe & /dev/pts/2/<pipe
+tail -f access.log | marker > pipe & /dev/pts/2<pipe
+ 
+marker < $(tail -n 20 -s 1 -f access.log)
+marker < | $(tail -n 20 -s 1 -f access.log)
+marker < |$(tail -n 20 -s 1 -f access.log)
+
+
+
+Script 2
+
+#!/bin/bash -l
+set -o xtrace
+renice -p $$ 15
+ 
+pkill -9 tee|marker &>/dev/null || echo -n
+disown -a &>/dev/null || echo
+ 
+[[ -r "~/pipe" ]] && rm -rf ~/pipe
+ 
+mkfifo ~/pipe
+ 
+cd /web/askapache.com/logs
+ 
+[[ -r "superlog.log" ]] && echo "Found old logfile, moving." && mv superlog.log `command ls|wc -l`-superlog.log
+ 
+marker <$HOME/pipe > $SSH_TTY & tail -n 150 -s .5 -f  php_error.log error.log modsec_audit.log >$HOME/pipe &
+disown %2; && disown %3;
+ 
+disown -a
+ 
+sleep 60 &
+disown $! || disown %1
+ 
+for i in `seq 1 4`;do echo -n $'a'; sleep 1;done
+kill -9 $J1
+kill -9 $J2
+ 
+logout
+exit 0
